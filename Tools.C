@@ -75,9 +75,11 @@ uint64_t Tools::buildLong(uint8_t bytes[LONGSIZE])
 uint64_t Tools::getByte(uint64_t source, int32_t byteNum)
 {
   if (byteNum < 0 || byteNum >= LONGSIZE) return 0;
+
   uint64_t shift = CHAR_BIT * byteNum;
   uint64_t mask = 0xffll << shift;
   uint64_t byte = (source & mask) >> shift;
+
   return byte;
 }
 
@@ -238,10 +240,7 @@ uint64_t Tools::copyBits(uint64_t source, uint64_t dest,
  */
 uint64_t Tools::setByte(uint64_t source, int32_t byteNum)
 {
-  uint64_t output = setBits(source, 8ull * byteNum, 8ull * (byteNum + 1));
-  
-  printf("%llx %llx %u \n", source, output, byteNum);
-
+  uint64_t output = setBits(source, 8 * byteNum, 8 * (byteNum + 1) - 1);
   return output;
 }
 
