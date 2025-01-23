@@ -108,7 +108,7 @@ uint64_t Tools::getByte(uint64_t source, int32_t byteNum)
  */
 uint64_t Tools::getBits(uint64_t source, int32_t low, int32_t high)
 {
-  if (low < 0 || high >= LONG_BITS) return 0;
+  if (low < 0 || high >= LONG_BITS || low > high) return 0;
 
   uint64_t high_removed = source << (LONG_BITS - high - 1);
   uint64_t low_removed = high_removed >> (LONG_BITS - (high - low + 1));
@@ -141,9 +141,10 @@ uint64_t Tools::getBits(uint64_t source, int32_t low, int32_t high)
  */
 uint64_t Tools::setBits(uint64_t source, int32_t low, int32_t high)
 {  
-  if (low < 0 || high >= LONG_BITS) return 0;
+  if (low < 0 || high >= LONG_BITS || low > high) return source;
   uint64_t mask = getBits(~0, low, high) << low;
-  return source | mask;
+  uint64_t set = source | mask;
+  return set;
 }
 
 /**
@@ -168,11 +169,10 @@ uint64_t Tools::setBits(uint64_t source, int32_t low, int32_t high)
  */
 uint64_t Tools::clearBits(uint64_t source, int32_t low, int32_t high)
 {
-  if (low < 0 || high >= LONG_BITS) return source;
+  if (low < 0 || high >= LONG_BITS || low > high) return source;
   uint64_t mask = getBits(~0, low, high) << low;
-  mask = ~mask;
-  printf("%llx %llx %llx \n", source, mask, source & mask);
-  return source & mask;
+  uint64_t cleared = source & (~mask);
+  return cleared;
 }
 
 
@@ -203,7 +203,9 @@ uint64_t Tools::clearBits(uint64_t source, int32_t low, int32_t high)
 uint64_t Tools::copyBits(uint64_t source, uint64_t dest, 
                          int32_t srclow, int32_t dstlow, int32_t length)
 {
-   return 0; 
+  uint64_t insert_bits = getBits(source, srclow, srclow + length) << dstlow;
+  uint64_t mask = getBits(~0, 0, length) << dstlow;
+   return (dest & mask) | insert_bits; 
 }
 
 
@@ -228,7 +230,8 @@ uint64_t Tools::copyBits(uint64_t source, uint64_t dest,
  */
 uint64_t Tools::setByte(uint64_t source, int32_t byteNum)
 {
-  return 0;
+  uint64_t mask = 0xff << (byteNum * 8);
+  return source | mask;
 }
 
 
@@ -250,7 +253,8 @@ uint64_t Tools::setByte(uint64_t source, int32_t byteNum)
  */
 uint64_t Tools::sign(uint64_t source)
 {
-  return 0;
+  uint64_t mask = 1ull << 63;
+  return (source & mask) >> 63;
 }
 
 /**
@@ -274,12 +278,14 @@ uint64_t Tools::sign(uint64_t source)
  */
 bool Tools::addOverflow(uint64_t op1, uint64_t op2)
 {
-  //Hint: If an overflow occurs then it overflows by just one bit.
-  //      In other words, 65 bits would be needed to store the arithmetic 
-  //      result instead of 64 and the sign bit in the stored result (bit 63) is incorrect. 
-  //      Thus, the way to check for an overflow is to compare the signs of the
-  //      operand and the result.  For example, if you add two positive numbers, 
-  //      the result should be positive, otherwise an overflow occurred.
+  // positive + positive -> positive
+  // positive + negative -> doesn't matter
+  // negative + positive -> doesn't matter
+  // negative + negative -> negative
+  bool s1 = sign(op1);
+  bool s2 = sign(op2);
+  bool ss = sign(op1 + op2);
+  if (s1 == s2) return s1 != ss;
   return false;
 }
 
@@ -305,9 +311,9 @@ bool Tools::addOverflow(uint64_t op1, uint64_t op2)
  */
 bool Tools::subOverflow(uint64_t op1, uint64_t op2)
 {
-  //See hint for addOverflow
-  //Note: you can not simply use addOverflow in this function.  If you negate
-  //op1 in order to an add, you may get an overflow. 
-  //NOTE: the subtraction is op2 - op1 (not op1 - op2).
+  bool s1 = sign(op1);
+  bool s2 = sign(op2);
+  bool ss = sign(op2 - op1);
+  if (s1 != s2) return ss != s2;
   return false;
 }
