@@ -77,7 +77,7 @@ uint64_t Tools::getByte(uint64_t source, int32_t byteNum)
   if (byteNum < 0 || byteNum >= LONGSIZE) return 0;
 
   uint64_t shift = CHAR_BIT * byteNum;
-  uint64_t mask = 0xffll << shift;
+  uint64_t mask = 0xffull << shift;
   uint64_t byte = (source & mask) >> shift;
 
   return byte;
