@@ -1,7 +1,10 @@
+#include <climits>
 #include <cstdint>
 #include <cstdlib>
 #include <string>
 #include "Tools.h"
+
+#define LONG_BITS (CHAR_BIT * LONGSIZE)
 
 /*
  * Hints/Notes:
@@ -43,7 +46,11 @@
 */
 uint64_t Tools::buildLong(uint8_t bytes[LONGSIZE])
 {
-  return 0;
+  uint64_t out = 0;
+  for (int i = 0; i < LONGSIZE; i++) {
+    out |= (uint64_t)bytes[i] << (8L * i);
+  }
+  return out;
 }
 
 /** 
@@ -67,7 +74,11 @@ uint64_t Tools::buildLong(uint8_t bytes[LONGSIZE])
 */
 uint64_t Tools::getByte(uint64_t source, int32_t byteNum)
 {
-  return 0;
+  if (byteNum < 0 || byteNum >= LONGSIZE) return 0;
+  uint64_t shift = 8 * byteNum;
+  uint64_t mask = 0xffl << shift;
+  uint64_t byte = (source & mask) >> shift;
+  return byte;
 }
 
 /**
@@ -97,7 +108,12 @@ uint64_t Tools::getByte(uint64_t source, int32_t byteNum)
  */
 uint64_t Tools::getBits(uint64_t source, int32_t low, int32_t high)
 {
-  return 0;
+  if (low < 0 || high >= LONG_BITS) return 0;
+
+  uint64_t high_removed = source << (LONG_BITS - high - 1);
+  uint64_t low_removed = high_removed >> (LONG_BITS - (high - low + 1));
+
+  return low_removed;
 }
 
 
@@ -124,8 +140,10 @@ uint64_t Tools::getBits(uint64_t source, int32_t low, int32_t high)
  * 3) you can use other functions you have written, for example, getBits
  */
 uint64_t Tools::setBits(uint64_t source, int32_t low, int32_t high)
-{
-  return 0;
+{  
+  if (low < 0 || high >= LONG_BITS) return 0;
+  uint64_t mask = getBits(~0, low, high) << low;
+  return source | mask;
 }
 
 /**
@@ -150,7 +168,11 @@ uint64_t Tools::setBits(uint64_t source, int32_t low, int32_t high)
  */
 uint64_t Tools::clearBits(uint64_t source, int32_t low, int32_t high)
 {
-  return 0;
+  if (low < 0 || high >= LONG_BITS) return source;
+  uint64_t mask = getBits(~0, low, high) << low;
+  mask = ~mask;
+  printf("%llx %llx %llx \n", source, mask, source & mask);
+  return source & mask;
 }
 
 
