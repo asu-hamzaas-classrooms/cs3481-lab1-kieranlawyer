@@ -48,7 +48,7 @@ uint64_t Tools::buildLong(uint8_t bytes[LONGSIZE])
 {
   uint64_t out = 0;
   for (int i = 0; i < LONGSIZE; i++) {
-    out |= (uint64_t)bytes[i] << (8L * i);
+    out |= (uint64_t)bytes[i] << (CHAR_BIT * i);
   }
   return out;
 }
@@ -75,8 +75,8 @@ uint64_t Tools::buildLong(uint8_t bytes[LONGSIZE])
 uint64_t Tools::getByte(uint64_t source, int32_t byteNum)
 {
   if (byteNum < 0 || byteNum >= LONGSIZE) return 0;
-  uint64_t shift = 8 * byteNum;
-  uint64_t mask = 0xffl << shift;
+  uint64_t shift = CHAR_BIT * byteNum;
+  uint64_t mask = 0xffll << shift;
   uint64_t byte = (source & mask) >> shift;
   return byte;
 }
@@ -111,7 +111,7 @@ uint64_t Tools::getBits(uint64_t source, int32_t low, int32_t high)
   if (low < 0 || high >= LONG_BITS || low > high) return 0;
 
   uint64_t high_removed = source << (LONG_BITS - high - 1);
-  uint64_t low_removed = high_removed >> (LONG_BITS - (high - low + 1));
+  uint64_t low_removed = high_removed >> (LONG_BITS - (high - low) - 1);
 
   return low_removed;
 }
@@ -140,10 +140,12 @@ uint64_t Tools::getBits(uint64_t source, int32_t low, int32_t high)
  * 3) you can use other functions you have written, for example, getBits
  */
 uint64_t Tools::setBits(uint64_t source, int32_t low, int32_t high)
-{  
+{
   if (low < 0 || high >= LONG_BITS || low > high) return source;
+
   uint64_t mask = getBits(~0, low, high) << low;
   uint64_t set = source | mask;
+
   return set;
 }
 
@@ -170,8 +172,10 @@ uint64_t Tools::setBits(uint64_t source, int32_t low, int32_t high)
 uint64_t Tools::clearBits(uint64_t source, int32_t low, int32_t high)
 {
   if (low < 0 || high >= LONG_BITS || low > high) return source;
+
   uint64_t mask = getBits(~0, low, high) << low;
   uint64_t cleared = source & (~mask);
+
   return cleared;
 }
 
@@ -203,11 +207,15 @@ uint64_t Tools::clearBits(uint64_t source, int32_t low, int32_t high)
 uint64_t Tools::copyBits(uint64_t source, uint64_t dest, 
                          int32_t srclow, int32_t dstlow, int32_t length)
 {
-  uint64_t insert_bits = getBits(source, srclow, srclow + length) << dstlow;
-  uint64_t mask = getBits(~0, 0, length) << dstlow;
-   return (dest & mask) | insert_bits; 
-}
+  if (srclow < 0 || dstlow < 0 || length < 0 
+    || srclow + length - 1 >= LONG_BITS || dstlow + length - 1 >= LONG_BITS) return dest;
 
+  uint64_t copy_bits = getBits(source, srclow, srclow + length - 1) << dstlow;
+  uint64_t dest_cleared = clearBits(dest, dstlow, dstlow + length - 1);
+  uint64_t finished = dest_cleared | copy_bits;
+
+  return finished; 
+}
 
 /**
  * sets the bits of source identfied by the byte number to 1 and
@@ -230,8 +238,11 @@ uint64_t Tools::copyBits(uint64_t source, uint64_t dest,
  */
 uint64_t Tools::setByte(uint64_t source, int32_t byteNum)
 {
-  uint64_t mask = 0xff << (byteNum * 8);
-  return source | mask;
+  uint64_t output = setBits(source, 8ull * byteNum, 8ull * (byteNum + 1));
+  
+  printf("%llx %llx %u \n", source, output, byteNum);
+
+  return output;
 }
 
 
@@ -253,8 +264,7 @@ uint64_t Tools::setByte(uint64_t source, int32_t byteNum)
  */
 uint64_t Tools::sign(uint64_t source)
 {
-  uint64_t mask = 1ull << 63;
-  return (source & mask) >> 63;
+  return getBits(source, 63, 63);
 }
 
 /**
@@ -278,10 +288,6 @@ uint64_t Tools::sign(uint64_t source)
  */
 bool Tools::addOverflow(uint64_t op1, uint64_t op2)
 {
-  // positive + positive -> positive
-  // positive + negative -> doesn't matter
-  // negative + positive -> doesn't matter
-  // negative + negative -> negative
   bool s1 = sign(op1);
   bool s2 = sign(op2);
   bool ss = sign(op1 + op2);
@@ -314,6 +320,6 @@ bool Tools::subOverflow(uint64_t op1, uint64_t op2)
   bool s1 = sign(op1);
   bool s2 = sign(op2);
   bool ss = sign(op2 - op1);
-  if (s1 != s2) return ss != s2;
+  if (s1 != s2) return s2 != ss;
   return false;
 }
